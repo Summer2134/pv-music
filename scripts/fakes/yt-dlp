@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+const url = process.argv.at(-1);
+if (/fail/.test(url)) { process.stderr.write('ERROR: nope'); process.exit(1); }
+process.stdout.write('https://cf-media.sndcdn.com/dlp.m3u8\n');

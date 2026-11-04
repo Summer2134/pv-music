@@ -1,0 +1,32 @@
+// !!!-команды музыкального бота: кто может, удаление, ЛС, перезапуск с меткой (без Discord и systemd).
+// MUSIC_TOKEN=x MUSIC_CLIENT_ID=1 MUSIC_OWNER_ID=own node scripts/smoke-music-admin.mjs
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync, unlinkSync } from 'node:fs';
+const P = await import('../dist/player.js');
+const A = await import('../dist/admin.js');
+const client = { on() {}, guilds: { cache: new Map() }, channels: { cache: new Map() } };
+P.createManager(client);
+let exits = 0; A._setExit(() => { exits++; });
+const dms = []; let deleted = 0;
+const msg = (content, id = 'own', bot = false) => ({ content, client, author: { id, bot, send: async p => { dms.push(p.embeds[0].description); } }, delete: async () => { deleted++; } });
+assert.equal(await A.handleMessage(msg('!!update')), false, '«!!» — не наше (это PV Bot)');
+assert.equal(await A.handleMessage(msg('!!!update', 'stranger')), false, 'чужой — тишина');
+assert.equal(dms.length, 0);
+assert.equal(await A.handleMessage(msg('!!!')), true);
+assert(/PV Music/.test(dms.at(-1)) && /Lavalink/.test(dms.at(-1)), dms.at(-1));
+assert.equal(deleted, 1, 'команда удалена');
+await A.handleMessage(msg('!!!что-то'));
+assert(/Не знаю/.test(dms.at(-1)));
+await A.handleMessage(msg('!!!restart'));
+assert(/Перезапускаюсь/.test(dms.at(-1)));
+await new Promise(r => setTimeout(r, 1700));
+assert.equal(exits, 1, 'вышел после ответа');
+assert.equal(readFileSync('.restart-request', 'utf8'), 'restart', 'метка для ЛС после запуска');
+unlinkSync('.restart-request');
+await A.handleMessage(msg('!!!update'));
+assert(/Обновлений нет|GitHub не ответил|Обновляюсь/.test(dms.at(-1)), dms.at(-1));
+await A.handleMessage(msg('!!!lavalink'));
+assert(/Lavalink/.test(dms.at(-1)));
+if (existsSync('.restart-request')) unlinkSync('.restart-request');
+console.log('smoke-music-admin: OK');
+process.exit(0);

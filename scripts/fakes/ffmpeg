@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+const a = process.argv.slice(2);
+if (a.includes('-version')) { process.stdout.write('ffmpeg version 6.1\n'); process.exit(0); }
+if (a[a.indexOf('-i') + 1].includes('silent')) { process.stderr.write('Server returned 403 Forbidden'); process.exit(1); }
+process.stdout.write('OggS' + JSON.stringify(a));

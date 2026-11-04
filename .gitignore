@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.restart-request
+.last-start
+.update-tried
+test-results/
+playwright-report/
