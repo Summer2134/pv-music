@@ -572,14 +572,15 @@ export async function handleButton(i: ButtonInteraction | StringSelectMenuIntera
     await player!.skip(n, false);
     return void i.update({ embeds: [card(`▶️ Включаю **${plain(clip(pick.info.title, 80))}**.`, COLOR.ok)], components: [] }).catch(() => undefined);
   } else {
+    // Сначала принимаем кнопку: действие и новая обложка могут занять больше 3 секунд Discord.
+    await i.deferUpdate().catch(() => undefined);
     const r = await control(player!, action, null);
-    if (!r) return void i.deferUpdate().catch(() => undefined);
-    if (!r.ok) return void fail(i, r.text);
-    if (['stop', 'skip', 'prev'].includes(action)) return void i.deferUpdate().catch(() => undefined); // новый трек сам обновит плеер
+    if (!r) return;
+    if (!r.ok) return void i.followUp({ embeds: [card(`✕ ${r.text}`, COLOR.err)], flags: EPH }).catch(() => undefined);
+    if (['stop', 'skip', 'prev'].includes(action)) return; // новый трек сам обновит плеер
   }
   const p = manager().getPlayer(i.guildId);
-  if (p?.queue.current) { const v = await nowView(p); await i.update({ components: v.components, files: v.files, attachments: [] }).catch(() => undefined); }
-  else await i.deferUpdate().catch(() => undefined);
+  if (p?.queue.current) { const v = await nowView(p); await i.editReply({ components: v.components, files: v.files, attachments: [] }).catch(() => undefined); }
 }
 
 // ===== Автодополнение =====

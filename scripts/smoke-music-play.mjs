@@ -166,7 +166,7 @@ const before = sent.length; await P.postNowPlaying(client, player); assert.equal
 assert.equal(npMsg.p.files?.[0]?.name, 'np.png', 'при правке картинка перерисована');
 let updated, deferred;
 const btn = id => ({ inCachedGuild: () => true, customId: 'mus:' + id, guildId: 'g', user: { id: 'u1', displayName: 'u' }, member: { voice: { channelId: 'vc1' } }, channel,
-  reply: async p => { last = p.embeds?.[0]?.toJSON().description; }, update: async p => { updated = p; }, deferUpdate: async () => { deferred = true; } });
+  reply: async p => { last = p.embeds?.[0]?.toJSON().description; }, update: async p => { updated = p; }, editReply: async p => { updated = p; }, deferUpdate: async () => { deferred = true; } });
 // Кнопка «📝 Текст» — слова только нажавшему (lrclib.net подменён)
 const realFetch = globalThis.fetch;
 globalThis.fetch = async url => String(url).includes('lrclib.net') ? { ok: true, status: 200, json: async () => ({ trackName: 'Track', artistName: player.queue.current.info.author, plainLyrics: 'строка один\nстрока два' }) } : realFetch(url);
@@ -182,7 +182,11 @@ await C.handleButton(stranger('stop')); assert(!player.destroyed, 'чужой н
 let qrep2; await C.handleButton({ ...stranger('queue'), reply: async p => { qrep2 = p; } }); assert(qrep2?.components, 'очередь смотреть может любой');
 vs.delete('u1'); await C.handleButton(stranger('pause')); assert.notEqual(player.paused, wasPaused, 'заказавший ушёл — управление свободно');
 await C.handleButton(stranger('pause')); vs.set('u1', { channelId: 'vc1' });
-await C.handleButton(btn('pause')); assert(player.paused && updated);
+const ackOrder = [], originalPause = player.pause.bind(player);
+player.pause = async () => { ackOrder.push('pause'); await originalPause(); };
+await C.handleButton({ ...btn('pause'), deferUpdate: async () => { ackOrder.push('ack'); } });
+assert.deepEqual(ackOrder, ['ack', 'pause'], 'Discord получает ответ до операции с плеером');
+assert(player.paused && updated);
 await C.handleButton(btn('volup')); assert.equal(player.volume, 130);
 // Кнопка очереди → список только нажавшему, в нём меню выбора трека
 let qrep; await C.handleButton({ ...btn('queue'), reply: async p => { qrep = p; } });
