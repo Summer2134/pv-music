@@ -5,7 +5,7 @@ import { ROOT } from './config.js';
 
 /**
  * Карточка «сейчас играет» картинкой (04.11.2026, просьба владельца: «как у eara, но круче»).
- * Фон — размытая обложка + ночной градиент (серая гамма PV Music), слева обложка, справа название,
+ * Фон — размытая обложка + ночной градиент (ледяная гамма Vafels), слева обложка, справа название,
  * исполнитель, кто заказал, толстая полоска времени. Размытый фон рисуется один раз на трек (кэш), дальше —
  * только лёгкий слой с текстом и полоской: обновление раз в 15 с почти бесплатное.
  */
@@ -13,8 +13,8 @@ export const W = 1100, H = 400;
 const FONTS = ['Montserrat_600SemiBold.ttf', 'Montserrat_700Bold.ttf', 'Montserrat_800ExtraBold.ttf', 'Unbounded_800ExtraBold.ttf']
   // Шрифты: свои (assets/fonts — отдельный репозиторий) или общие PV Bot (../assets/fonts).
   .map(f => [join(ROOT, 'assets', 'fonts', f), join(ROOT, '..', 'assets', 'fonts', f)].find(existsSync)).filter((x): x is string => Boolean(x));
-// Серая гамма под аватар и баннер PV Music (04.11.2026, просьба владельца).
-const LABEL = '#FFFFFF', SOFT = '#B5BAC1', NIGHT = '#1E1F22';
+// Ледяная гамма Vafels: глубокий синий фон, светлый текст и голубой прогресс.
+const LABEL = '#EAF5FF', SOFT = '#B4C2D8', NIGHT = '#0B1424';
 
 export const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]!);
 /** Грубая ширина строки (без измерения шрифта): Unbounded шире Montserrat. */
@@ -84,9 +84,9 @@ export function nowCardSvg(d: CardData): string {
     <clipPath id="card"><rect width="${W}" height="${H}" rx="28"/></clipPath>
     <clipPath id="cover"><rect x="${ax}" y="${ay}" width="${as}" height="${as}" rx="22"/></clipPath>
     <linearGradient id="shade" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="${NIGHT}" stop-opacity="0.55"/><stop offset="0.45" stop-color="${NIGHT}" stop-opacity="0.8"/><stop offset="1" stop-color="#111214" stop-opacity="0.92"/>
+      <stop offset="0" stop-color="${NIGHT}" stop-opacity="0.5"/><stop offset="0.45" stop-color="#10243D" stop-opacity="0.84"/><stop offset="1" stop-color="#08111F" stop-opacity="0.95"/>
     </linearGradient>
-    <linearGradient id="fill" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8E9297"/><stop offset="1" stop-color="#F2F3F5"/></linearGradient>
+    <linearGradient id="fill" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5B8DEF"/><stop offset="1" stop-color="#C4E2FF"/></linearGradient>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
   </defs>
   <g clip-path="url(#card)">

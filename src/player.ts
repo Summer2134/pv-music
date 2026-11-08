@@ -13,9 +13,8 @@ import { ico, type Emo } from './icons.js';
 import { streamUrl } from './soundcloud.js';
 import { feedback, fillWave, isWaveTrack, loadPrefs, prefsText, waveOf, WAVE_AHEAD, type WaveState } from './wave.js';
 
-/** Цвета и мелочи оформления (тёмно-синяя ночь + тёплый янтарь, как у PV Bot). */
-// Серая гамма под аватар/баннер PV Music: всё монохромное, без цветных кнопок.
-export const COLOR = { main: 0x80848e, ok: 0xb5bac1, err: 0x4e5058, idle: 0x2b2d31 };
+/** Ледяная гамма Vafels: синий акцент, понятные главное и опасное действия. */
+export const COLOR = { main: 0x7fb8e6, ok: 0x9fe0c0, err: 0xeb7373, idle: 0x243047 };
 export const card = (text: string, color = COLOR.main) => new EmbedBuilder().setColor(color).setDescription(text);
 
 export type Requester = { id: string; username: string; avatar?: string | null };
@@ -148,20 +147,16 @@ export async function nowView(player: Player, disabled = false) {
   const left = list.reduce((sum, x) => sum + (x.info.isStream ? 0 : x.info.duration), 0);
   const wave = waveOf(player);
   const status = [
-    wave ? `🌊 волна <@${wave.owner}>${prefsText(wave.prefs) ? ` · ${prefsText(wave.prefs).toLowerCase()}` : ''}` : '',
-    i.uri?.startsWith('http') ? `[открыть трек](${i.uri})` : '',
-    `громкость ${player.volume}%`,
-    `повтор: ${REPEAT_NAME[player.repeatMode]}`,
-    autoplay && !wave ? 'автоплей' : '',
-    list.length ? `в очереди ${list.length} · ${dur(left)}` : '',
-  ].filter(Boolean).join(' · ');
+    [wave ? `🌊 волна <@${wave.owner}>${prefsText(wave.prefs) ? ` · ${prefsText(wave.prefs).toLowerCase()}` : ''}` : '', i.uri?.startsWith('http') ? `[открыть трек](${i.uri})` : ''].filter(Boolean).join(' · '),
+    [`громкость ${player.volume}%`, `повтор: ${REPEAT_NAME[player.repeatMode]}`, autoplay && !wave ? 'автоплей' : '', list.length ? `в очереди ${list.length} · ${dur(left)}` : ''].filter(Boolean).join(' · '),
+  ].filter(Boolean).map(x => `-# ${x}`).join('\n');
   const note = noteOf(player.guildId);
-  c.addTextDisplayComponents(x => x.setContent(`-# ${status}${note ? `\n-# ${note}` : ''}`));
-  // Вариант 3, выбран владельцем 04.11.2026: крупная пауза · перемотка и громкость · режимы. Всё кнопками.
+  c.addTextDisplayComponents(x => x.setContent(`${status}${note ? `\n-# ${note}` : ''}`));
+  // Главное действие — синее, опасное — красное; второстепенные кнопки остаются спокойными.
   const seekable = !i.isStream && !!i.duration && (i.isSeekable || /^sc:\d+$/.test(i.identifier ?? ''));
   c.addActionRowComponents(row => row.addComponents(
     btn('prev', ico('prev', '⏮️'), ButtonStyle.Secondary, disabled || !player.queue.previous.length),
-    btn('pause', player.paused ? ico('play', '▶️') : ico('pause', '⏸️'), ButtonStyle.Secondary, disabled, player.paused ? 'Играть' : 'Пауза'),
+    btn('pause', player.paused ? ico('play', '▶️') : ico('pause', '⏸️'), ButtonStyle.Primary, disabled, player.paused ? 'Играть' : 'Пауза'),
     btn('skip', ico('next', '⏭️'), ButtonStyle.Secondary, disabled),
     btn('lyrics', ico('lyrics', '📝'), ButtonStyle.Secondary, disabled || i.isStream, 'Текст'),
   ));
@@ -176,15 +171,15 @@ export async function nowView(player: Player, disabled = false) {
   if (wave) c.addActionRowComponents(row => row.addComponents(
     btn('dislike', ico('dislike', '👎'), ButtonStyle.Secondary, disabled),
     btn('like', ico('like', '❤️'), ButtonStyle.Secondary, disabled),
-    btn('wave:panel', ico('wave', '🌊'), ButtonStyle.Secondary, disabled, 'Волна'),
-    btn('stop', ico('stop', '⏹️'), ButtonStyle.Secondary, disabled),
+    btn('wave:panel', ico('wave', '🌊'), ButtonStyle.Primary, disabled, 'Волна'),
+    btn('stop', ico('stop', '⏹️'), ButtonStyle.Danger, disabled),
   ));
   else c.addActionRowComponents(row => row.addComponents(
     btn('shuffle', ico('shuffle', '🔀'), ButtonStyle.Secondary, disabled || list.length < 2),
-    btn('loop', ico(`loop_${player.repeatMode}`, REPEAT_ICON[player.repeatMode]), ButtonStyle.Secondary, disabled),
-    btn('autoplay', ico('autoplay', '♾️'), ButtonStyle.Secondary, disabled),
+    btn('loop', ico(`loop_${player.repeatMode}`, REPEAT_ICON[player.repeatMode]), player.repeatMode === 'off' ? ButtonStyle.Secondary : ButtonStyle.Primary, disabled),
+    btn('autoplay', ico('autoplay', '♾️'), autoplay ? ButtonStyle.Primary : ButtonStyle.Secondary, disabled),
     btn('like', ico('like', '❤️'), ButtonStyle.Secondary, disabled),
-    btn('stop', ico('stop', '⏹️'), ButtonStyle.Secondary, disabled),
+    btn('stop', ico('stop', '⏹️'), ButtonStyle.Danger, disabled),
   ));
   return { components: [c], files: file ? [file] : [], flags: V2 as typeof V2, allowedMentions: { parse: [] as [] } };
 }
