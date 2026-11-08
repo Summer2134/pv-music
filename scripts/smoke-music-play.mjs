@@ -166,7 +166,7 @@ const before = sent.length; await P.postNowPlaying(client, player); assert.equal
 assert.equal(npMsg.p.files?.[0]?.name, 'np.png', 'при правке картинка перерисована');
 let updated, deferred;
 const btn = id => ({ inCachedGuild: () => true, customId: 'mus:' + id, guildId: 'g', user: { id: 'u1', displayName: 'u' }, member: { voice: { channelId: 'vc1' } }, channel,
-  reply: async p => { last = p.embeds?.[0]?.toJSON().description; }, update: async p => { updated = p; }, editReply: async p => { updated = p; }, deferUpdate: async () => { deferred = true; } });
+  reply: async p => { last = p.embeds?.[0]?.toJSON().description; }, update: async p => { updated = p; }, editReply: async p => { updated = p; last = p.embeds?.[0]?.toJSON().description ?? last; }, deferUpdate: async function () { this.deferred = true; deferred = true; }, deferReply: async function () { this.deferred = true; } });
 // Кнопка «📝 Текст» — слова только нажавшему (lrclib.net подменён)
 const realFetch = globalThis.fetch;
 globalThis.fetch = async url => String(url).includes('lrclib.net') ? { ok: true, status: 200, json: async () => ({ trackName: 'Track', artistName: player.queue.current.info.author, plainLyrics: 'строка один\nстрока два' }) } : realFetch(url);
@@ -228,8 +228,8 @@ await C.handleCommand(it('играть', { 'запрос': 'свой трек' }
 assert(!W.isWaveTrack(player.queue.tracks[0]), 'свой трек — раньше треков волны');
 const beforeDis = player.queue.current;
 await C.handleButton(btn('dislike')); assert(/в дизлайках/.test(last), last); assert.notEqual(player.queue.current, beforeDis, '👎 — следующий');
-let panel; await C.handleButton({ ...btn('wave:panel'), reply: async p => { panel = p; } });
-assert(panel.flags && JSON.stringify(panel.components.map(c => c.toJSON())).includes('mus:wave:set:mood:sad'), 'настройки волны');
+let panel; await C.handleButton({ ...btn('wave:panel'), editReply: async p => { panel = p; } });
+assert(JSON.stringify(panel.components.map(c => c.toJSON())).includes('mus:wave:set:mood:sad'), 'настройки волны');
 await P.stopWave(player); assert(!W.waveOf(player) && !player.queue.tracks.some(W.isWaveTrack), 'волна выключена');
 // /волна, когда музыка ещё не играла (плеера нет) — раньше падало «Что-то пошло не так»
 player = null;

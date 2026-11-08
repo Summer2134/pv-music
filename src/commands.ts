@@ -427,6 +427,7 @@ async function like(i: ChatInputCommandInteraction | ButtonInteraction | StringS
   const t = player?.queue.current;
   if (!t) return void fail(i, 'Сейчас ничего не играет.');
   if (!dbReady) return void fail(i, 'База не подключена.');
+  await i.deferReply({ flags: EPH });
   const r = await safe(`INSERT INTO music_likes (user_id, uri, title, author, duration_ms) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING RETURNING uri`,
     [i.user.id, t.info.uri, t.info.title.slice(0, 300), (t.info.author ?? '').slice(0, 200), Math.min(t.info.duration || 0, 2e9)]);
   if (!r?.length) {
@@ -473,20 +474,24 @@ async function waveAction(i: ChatInputCommandInteraction | ButtonInteraction, ac
   const player = manager().getPlayer(i.guildId!);
   const mine = waveOf(player)?.owner === i.user.id;
   if (action === 'panel' || action === '') {
+    await i.deferReply({ flags: EPH });
     const prefs = await loadPrefs(i.user.id);
-    return void i.reply({ ...wavePanel(prefs, Boolean(player && mine)), flags: EPH }).catch(() => undefined);
+    return void i.editReply({ ...wavePanel(prefs, Boolean(player && mine)) }).catch(() => undefined);
   }
   if (action.startsWith('set:') || action === 'reset') {
+    const button = i as ButtonInteraction;
+    await button.deferUpdate().catch(() => undefined);
     const [, g, v] = action.split(':') as [string, WaveGroup, string];
     const prefs = action === 'reset' ? noPrefs() : await loadPrefs(i.user.id);
     if (action !== 'reset') prefs[g] = prefs[g] === v ? null : v;
     await savePrefs(i.user.id, prefs);
-    return void (i as ButtonInteraction).update(wavePanel(prefs, Boolean(player && mine))).catch(() => undefined);
+    return void button.editReply(wavePanel(prefs, Boolean(player && mine))).catch(() => undefined);
   }
   if (action === 'off') {
     if (!player || !waveOf(player)) return void fail(i, 'Волна и так выключена.');
     const denied = mine ? null : controlDenied(i.user.id, player);
     if (denied) return void fail(i, denied);
+    await i.deferReply({ flags: EPH });
     await stopWave(player);
     return void reply(i, '⏹️ Волна выключена. Текущий трек доиграет.');
   }
@@ -519,6 +524,7 @@ export async function handleButton(i: ButtonInteraction | StringSelectMenuIntera
     if (!player || !t) return void fail(i, 'Сейчас ничего не играет.');
     const p2 = voiceProblem(i, player); if (p2) return void fail(i, p2);
     const d2 = controlDenied(i.user.id, player); if (d2) return void fail(i, d2);
+    await i.deferReply({ flags: EPH });
     await feedback(i.user.id, t, -3).catch(() => undefined);
     await safe('DELETE FROM music_likes WHERE user_id = $1 AND uri = $2', [i.user.id, t.info.uri]);
     await player.skip(0, false).catch(() => player.stopPlaying(true, false));
@@ -527,18 +533,20 @@ export async function handleButton(i: ButtonInteraction | StringSelectMenuIntera
   if (action === 'leave') {
     const denied = controlDenied(i.user.id, player);
     if (denied) return void fail(i, denied);
+    await i.deferUpdate().catch(() => undefined);
     player?.set('stoppedBy', i.user.id);
     if (player) await player.destroy('stopped');
-    return void i.deferUpdate().catch(() => undefined);
+    return;
   }
   if (action === 'replay') {
     const member = i.member as GuildMember;
     const last = player?.queue.previous[0];
     if (!player || !last) return void fail(i, 'Нечего повторять — включи: `/играть`');
     if (member.voice.channelId !== player.voiceChannelId) return void fail(i, `Зайди в <#${player.voiceChannelId}>.`);
+    await i.deferUpdate().catch(() => undefined);
     await player.queue.add(last);
     if (!player.playing) await player.play({ paused: false });
-    return void i.deferUpdate().catch(() => undefined);
+    return;
   }
   const problem = voiceProblem(i, player, action !== 'autoplay' && action !== 'queue');
   if (problem) return void fail(i, problem);
@@ -546,11 +554,11 @@ export async function handleButton(i: ButtonInteraction | StringSelectMenuIntera
   if (denied) return void fail(i, denied);
   if (action === 'stop') player?.set('stoppedBy', i.user.id);
   if (action === 'autoplay') {
+    await i.deferUpdate().catch(() => undefined);
     const s = await guildSettings(i.guildId);
     await saveSettings(i.guildId, { autoplay: !s.autoplay });
     // Очередь уже кончилась, а автоплей включили — сразу похожее.
     if (!s.autoplay && player && !player.queue.current && player.queue.previous[0]) {
-      await i.deferUpdate().catch(() => undefined);
       const last = player.queue.previous[0];
       const r = await resolve(manager(), `${last.info.author.replace(/\s*-\s*topic$/i, '')}`, i.user).catch(() => null);
       const pick = r?.tracks.find(t => t.info.uri !== last.info.uri);
@@ -569,8 +577,9 @@ export async function handleButton(i: ButtonInteraction | StringSelectMenuIntera
     const n = Number(i.values[0]);
     if (!(n >= 1 && n <= player!.queue.tracks.length)) return void fail(i, 'Этого трека в очереди уже нет.');
     const pick = player!.queue.tracks[n - 1] as Track;
+    await i.deferUpdate().catch(() => undefined);
     await player!.skip(n, false);
-    return void i.update({ embeds: [card(`▶️ Включаю **${plain(clip(pick.info.title, 80))}**.`, COLOR.ok)], components: [] }).catch(() => undefined);
+    return void i.editReply({ embeds: [card(`▶️ Включаю **${plain(clip(pick.info.title, 80))}**.`, COLOR.ok)], components: [] }).catch(() => undefined);
   } else {
     // Сначала принимаем кнопку: действие и новая обложка могут занять больше 3 секунд Discord.
     await i.deferUpdate().catch(() => undefined);
